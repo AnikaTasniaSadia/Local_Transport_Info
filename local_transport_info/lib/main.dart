@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'profile/profile_screen.dart';
+
 void main() {
   runApp(const LocalTransportInfoApp());
 }
@@ -96,6 +98,32 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final borderColor = Theme.of(context).colorScheme.outlineVariant;
 
+    Widget body;
+    switch (_bottomNavIndex) {
+      case 0:
+        body = _buildHomeTab(context, borderColor);
+        break;
+      case 1:
+        body = const _PlaceholderTab(
+          title: 'Map',
+          subtitle: 'Map view coming soon.',
+          icon: Icons.map_outlined,
+        );
+        break;
+      case 2:
+        body = const _PlaceholderTab(
+          title: 'History',
+          subtitle: 'Search history coming soon.',
+          icon: Icons.history,
+        );
+        break;
+      case 3:
+        body = const ProfileScreen();
+        break;
+      default:
+        body = _buildHomeTab(context, borderColor);
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Local Transport Info'),
@@ -107,124 +135,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           IconButton(
             tooltip: 'Profile',
-            onPressed: () {},
+            onPressed: () {
+              setState(() => _bottomNavIndex = 3);
+            },
             icon: const Icon(Icons.person_outline),
           ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Card(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      side: BorderSide(color: borderColor),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Find Your Bus Fare',
-                            style: Theme.of(context).textTheme.headlineSmall,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Government approved bus fare & routes',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                          const SizedBox(height: 18),
-                          DropdownButtonFormField<String>(
-                            value: _fromStop,
-                            items: _stops
-                                .map(
-                                  (stop) => DropdownMenuItem<String>(
-                                    value: stop,
-                                    child: Text(stop),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() => _fromStop = value);
-                            },
-                            decoration: const InputDecoration(
-                              labelText: 'From Stop',
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          DropdownButtonFormField<String>(
-                            value: _toStop,
-                            items: _stops
-                                .map(
-                                  (stop) => DropdownMenuItem<String>(
-                                    value: stop,
-                                    child: Text(stop),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() => _toStop = value);
-                            },
-                            decoration: const InputDecoration(
-                              labelText: 'To Stop',
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton(
-                            onPressed: _canSearch ? _searchRoute : null,
-                            child: const Text('Search Route'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    'Popular Routes',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      ActionChip(
-                        label: const Text('Mirpur → Farmgate'),
-                        onPressed: () =>
-                            _applyPopularRoute(from: 'Mirpur', to: 'Farmgate'),
-                      ),
-                      ActionChip(
-                        label: const Text('Gulistan → Jatrabari'),
-                        onPressed: () => _applyPopularRoute(
-                          from: 'Gulistan',
-                          to: 'Jatrabari',
-                        ),
-                      ),
-                      ActionChip(
-                        label: const Text('Uttara → Motijheel'),
-                        onPressed: () =>
-                            _applyPopularRoute(from: 'Uttara', to: 'Motijheel'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+      body: body,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _bottomNavIndex,
         onDestinationSelected: (index) {
@@ -239,6 +157,181 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Profile',
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHomeTab(BuildContext context, Color borderColor) {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Card(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    side: BorderSide(color: borderColor),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Find Your Bus Fare',
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Government approved bus fare & routes',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                        const SizedBox(height: 18),
+                        DropdownButtonFormField<String>(
+                          // ignore: deprecated_member_use
+                          value: _fromStop,
+                          items: _stops
+                              .map(
+                                (stop) => DropdownMenuItem<String>(
+                                  value: stop,
+                                  child: Text(stop),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() => _fromStop = value);
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'From Stop',
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          // ignore: deprecated_member_use
+                          value: _toStop,
+                          items: _stops
+                              .map(
+                                (stop) => DropdownMenuItem<String>(
+                                  value: stop,
+                                  child: Text(stop),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() => _toStop = value);
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'To Stop',
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        FilledButton(
+                          onPressed: _canSearch ? _searchRoute : null,
+                          child: const Text('Search Route'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Popular Routes',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    ActionChip(
+                      label: const Text('Mirpur → Farmgate'),
+                      onPressed: () =>
+                          _applyPopularRoute(from: 'Mirpur', to: 'Farmgate'),
+                    ),
+                    ActionChip(
+                      label: const Text('Gulistan → Jatrabari'),
+                      onPressed: () =>
+                          _applyPopularRoute(from: 'Gulistan', to: 'Jatrabari'),
+                    ),
+                    ActionChip(
+                      label: const Text('Uttara → Motijheel'),
+                      onPressed: () =>
+                          _applyPopularRoute(from: 'Uttara', to: 'Motijheel'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaceholderTab extends StatelessWidget {
+  const _PlaceholderTab({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Row(
+                  children: [
+                    Icon(icon, size: 34),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -278,7 +371,7 @@ class ResultScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Results will appear here (Firestore integration later).',
+                      'Fare details will appear here.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
