@@ -46,7 +46,6 @@ class LocalTransportInfoApp extends StatelessWidget {
   final String? startupWarning;
 
   static const Color _primary = Color(0xFF1B5E20);
-  static const Color _primaryVariant = Color(0xFF2E7D32);
   static const Color _accent = Color(0xFF00897B);
   static const Color _background = Color(0xFFF9FAF9);
   static const Color _card = Color(0xFFFFFFFF);
@@ -64,11 +63,9 @@ class LocalTransportInfoApp extends StatelessWidget {
           secondary: _accent,
           tertiary: _accent,
           surface: _card,
-          background: _background,
           onPrimary: Colors.white,
           onSecondary: Colors.white,
           onSurface: _textPrimary,
-          onBackground: _textPrimary,
         );
 
     return MaterialApp(
@@ -77,6 +74,17 @@ class LocalTransportInfoApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: colorScheme,
+        splashFactory: InkSparkle.splashFactory,
+        pageTransitionsTheme: const PageTransitionsTheme(
+          builders: {
+            TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+            TargetPlatform.linux: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.macOS: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
+            TargetPlatform.fuchsia: FadeUpwardsPageTransitionsBuilder(),
+          },
+        ),
         scaffoldBackgroundColor: _background,
         textTheme: ThemeData.light().textTheme.apply(
           bodyColor: _textPrimary,
@@ -92,7 +100,7 @@ class LocalTransportInfoApp extends StatelessWidget {
           color: _card,
           elevation: 2,
           margin: EdgeInsets.zero,
-          shadowColor: _textSecondary.withOpacity(0.2),
+          shadowColor: _textSecondary.withValues(alpha: 0.2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -105,27 +113,43 @@ class LocalTransportInfoApp extends StatelessWidget {
           hintStyle: const TextStyle(color: _textSecondary),
         ),
         filledButtonTheme: FilledButtonThemeData(
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
+          style:
+              FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ).copyWith(
+                overlayColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.pressed)
+                      ? _primary.withValues(alpha: 0.12)
+                      : null,
+                ),
+              ),
+        ),
+        iconButtonTheme: IconButtonThemeData(
+          style: ButtonStyle(
+            overlayColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.pressed)
+                  ? _primary.withValues(alpha: 0.12)
+                  : null,
             ),
           ),
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: _background,
-          indicatorColor: _primary.withOpacity(0.12),
-          labelTextStyle: MaterialStateProperty.resolveWith(
+          indicatorColor: _primary.withValues(alpha: 0.12),
+          labelTextStyle: WidgetStateProperty.resolveWith(
             (states) => TextStyle(
-              color: states.contains(MaterialState.selected)
+              color: states.contains(WidgetState.selected)
                   ? _primary
                   : _textSecondary,
               fontWeight: FontWeight.w600,
             ),
           ),
-          iconTheme: MaterialStateProperty.resolveWith(
+          iconTheme: WidgetStateProperty.resolveWith(
             (states) => IconThemeData(
-              color: states.contains(MaterialState.selected)
+              color: states.contains(WidgetState.selected)
                   ? _primary
                   : _textSecondary,
             ),
@@ -133,11 +157,11 @@ class LocalTransportInfoApp extends StatelessWidget {
         ),
         chipTheme: ChipThemeData(
           backgroundColor: _card,
-          selectedColor: _primary.withOpacity(0.12),
-          secondarySelectedColor: _primary.withOpacity(0.12),
+          selectedColor: _primary.withValues(alpha: 0.12),
+          secondarySelectedColor: _primary.withValues(alpha: 0.12),
           labelStyle: const TextStyle(color: _textPrimary),
           secondaryLabelStyle: const TextStyle(color: _textPrimary),
-          side: BorderSide(color: _textSecondary.withOpacity(0.3)),
+          side: BorderSide(color: _textSecondary.withValues(alpha: 0.3)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),

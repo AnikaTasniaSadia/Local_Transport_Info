@@ -66,15 +66,22 @@ class HomeTab extends StatelessWidget {
                             IconButton(
                               tooltip: 'Reload stops',
                               onPressed: isLoadingStops ? null : onReloadStops,
-                              icon: isLoadingStops
-                                  ? const SizedBox(
-                                      height: 18,
-                                      width: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+                              icon: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                child: isLoadingStops
+                                    ? const SizedBox(
+                                        key: ValueKey('loading'),
+                                        height: 18,
+                                        width: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.refresh,
+                                        key: ValueKey('idle'),
                                       ),
-                                    )
-                                  : const Icon(Icons.refresh),
+                              ),
                             ),
                           ],
                         ),
@@ -89,16 +96,24 @@ class HomeTab extends StatelessWidget {
                               ),
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          isLoadingStops
-                              ? 'Loading stops…'
-                              : 'Stops loaded: ${stops.length}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: Text(
+                            isLoadingStops
+                                ? 'Loading stops…'
+                                : 'Stops loaded: ${stops.length}',
+                            key: ValueKey(
+                              isLoadingStops
+                                  ? 'loading-stops'
+                                  : 'stops-${stops.length}',
+                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
                         ),
                         if (!isLoadingStops &&
                             stopsLoadError == null &&
@@ -170,8 +185,8 @@ class HomeTab extends StatelessWidget {
                 Text(
                   'Popular Routes',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Wrap(

@@ -96,59 +96,37 @@ class _ResultScreenState extends State<ResultScreen> {
     final estimatedFare = _estimatedFare;
     final hasGovFare = _governmentFare != null;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Route Result')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-              ),
-                padding: const EdgeInsets.all(20),
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                      style: Theme.of(context).textTheme.titleLarge,
+    final Widget content = _isLoading
+        ? const Center(
+            key: ValueKey('loading'),
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 18),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        : _error != null
+            ? Column(
+                key: const ValueKey('error'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _error!,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
                     ),
-                    const SizedBox(height: 10),
-                      Text(
-                        'Route: $_routeNo',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                      ),
-                      Text('Route: $_routeNo'),
-                      const SizedBox(height: 8),
-                    ],
-                    if (_isLoading) ...[
-                      const SizedBox(height: 8),
-                      const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 18),
-                          child: CircularProgressIndicator(),
-                        ),
-                      ),
-                    ] else if (_error != null) ...[
-                      Text(
-                        _error!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: _loadFare,
-                        child: const Text('Retry'),
-                      ),
-                    ] else if (hasGovFare) ...[
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: _loadFare,
+                    child: const Text('Retry'),
+                  ),
+                ],
+              )
+            : hasGovFare
+                ? Column(
+                    key: const ValueKey('gov-fare'),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
                         'Government fare: ৳${_governmentFare!.toStringAsFixed(0)}',
                         style: Theme.of(context).textTheme.titleMedium,
@@ -157,14 +135,23 @@ class _ResultScreenState extends State<ResultScreen> {
                       Text(
                         'Source: Supabase (fares table)',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
                         ),
                       ),
-                    ] else ...[
+                    ],
+                  )
+                : Column(
+                    key: const ValueKey('estimate'),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
                         'Government fare not found for this pair.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -180,7 +167,7 @@ class _ResultScreenState extends State<ResultScreen> {
                         ),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
-                            RegExp(r'^[0-9]*\\.?[0-9]*$'),
+                            RegExp(r'^[0-9]*\.?[0-9]*$'),
                           ),
                         ],
                         decoration: const InputDecoration(
@@ -199,12 +186,54 @@ class _ResultScreenState extends State<ResultScreen> {
                           'Rate: ৳${AppConfig.fallbackRatePerKm} per km',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
                               ),
                         ),
                     ],
+                  );
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Route Result')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${widget.fromStopName} → ${widget.toStopName}',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    if (_routeNo != null && _routeNo!.trim().isNotEmpty) ...[
+                      Text(
+                        'Route: $_routeNo',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      ),
+                      child: content,
+                    ),
                   ],
                 ),
               ),
