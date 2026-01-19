@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/models/stop.dart';
+import '../map/stop_coordinates.dart';
 
 class HomeTab extends StatelessWidget {
   const HomeTab({
@@ -35,6 +37,85 @@ class HomeTab extends StatelessWidget {
 
   bool get _canSearch =>
       fromStopId != null && toStopId != null && fromStopId != toStopId;
+
+  Widget _buildMiniMap(BuildContext context) {
+    final from = StopCoordinates.ofStop(fromStopId);
+    final to = StopCoordinates.ofStop(toStopId);
+
+    if (from == null || to == null) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              const Icon(Icons.map_outlined),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Select From and To stops to preview the route on the map.',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final markers = <Marker>{
+      Marker(
+        markerId: const MarkerId('from'),
+        position: from,
+        infoWindow: InfoWindow(title: _stopName(fromStopId)),
+      ),
+      Marker(
+        markerId: const MarkerId('to'),
+        position: to,
+        infoWindow: InfoWindow(title: _stopName(toStopId)),
+      ),
+    };
+
+    final polylines = <Polyline>{
+      Polyline(
+        polylineId: const PolylineId('route'),
+        points: [from, to],
+        width: 4,
+        color: Theme.of(context).colorScheme.primary,
+      ),
+    };
+
+    final center = LatLng(
+      (from.latitude + to.latitude) / 2,
+      (from.longitude + to.longitude) / 2,
+    );
+
+    return Card(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          height: 200,
+          child: GoogleMap(
+            initialCameraPosition: CameraPosition(target: center, zoom: 12),
+            markers: markers,
+            polylines: polylines,
+            zoomControlsEnabled: false,
+            myLocationButtonEnabled: false,
+            mapToolbarEnabled: false,
+            rotateGesturesEnabled: false,
+            tiltGesturesEnabled: false,
+            zoomGesturesEnabled: false,
+            scrollGesturesEnabled: false,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _stopName(String? stopId) {
+    if (stopId == null) return '';
+    final stop = stops.where((s) => s.stopId == stopId).firstOrNull;
+    return stop?.displayName(isEnglish: isEnglish) ?? stopId;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +258,8 @@ class HomeTab extends StatelessWidget {
                           onPressed: _canSearch ? onSearch : null,
                           child: const Text('Search Route'),
                         ),
+                        const SizedBox(height: 16),
+                        _buildMiniMap(context),
                       ],
                     ),
                   ),
@@ -228,5 +311,13 @@ class HomeTab extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull {
+    final iterator = this.iterator;
+    if (!iterator.moveNext()) return null;
+    return iterator.current;
   }
 }

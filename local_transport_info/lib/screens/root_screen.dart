@@ -8,7 +8,7 @@ import 'admin/admin_login_screen.dart';
 import 'admin/admin_screen.dart';
 import 'home/home_tab.dart';
 import 'home/result_screen.dart';
-import 'map/map_tab.dart';
+import 'map/map_screen.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key, this.startupWarning});
@@ -241,36 +241,44 @@ class _RootScreenState extends State<RootScreen> {
     );
   }
 
+  Widget _getCurrentPage() {
+    switch (_bottomNavIndex) {
+      case 0:
+        return HomeTab(
+          isEnglish: _isEnglish,
+          isLoadingStops: _isLoadingStops,
+          stops: _stops,
+          stopsLoadError: _stopsLoadError,
+          fromStopId: _fromStopId,
+          toStopId: _toStopId,
+          onReloadStops: _loadStops,
+          onFromChanged: (v) => setState(() => _fromStopId = v),
+          onToChanged: (v) => setState(() => _toStopId = v),
+          onSearch: _searchRoute,
+          onApplyPopularRoute: _applyPopularRoute,
+        );
+      case 1:
+        return MapScreen(
+          stops: _stops,
+          isEnglish: _isEnglish,
+          fromStopId: _fromStopId,
+          toStopId: _toStopId,
+        );
+      case 2:
+        return const _PlaceholderTab(
+          title: 'History',
+          subtitle: 'Search history coming soon.',
+          icon: Icons.history,
+        );
+      case 3:
+        return const ProfileScreen();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final List<Widget> destinations = [
-      HomeTab(
-        isEnglish: _isEnglish,
-        isLoadingStops: _isLoadingStops,
-        stops: _stops,
-        stopsLoadError: _stopsLoadError,
-        fromStopId: _fromStopId,
-        toStopId: _toStopId,
-        onReloadStops: _loadStops,
-        onFromChanged: (v) => setState(() => _fromStopId = v),
-        onToChanged: (v) => setState(() => _toStopId = v),
-        onSearch: _searchRoute,
-        onApplyPopularRoute: _applyPopularRoute,
-      ),
-      MapTab(
-        stops: _stops,
-        isEnglish: _isEnglish,
-        fromStopId: _fromStopId,
-        toStopId: _toStopId,
-      ),
-      const _PlaceholderTab(
-        title: 'History',
-        subtitle: 'Search history coming soon.',
-        icon: Icons.history,
-      ),
-      const ProfileScreen(),
-    ];
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Local Transport Info'),
@@ -293,7 +301,7 @@ class _RootScreenState extends State<RootScreen> {
           ),
         ],
       ),
-      body: destinations[_bottomNavIndex],
+      body: SafeArea(child: _getCurrentPage()),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _bottomNavIndex,
         onDestinationSelected: (index) =>
