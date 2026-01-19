@@ -105,94 +105,84 @@ class _ResultScreenState extends State<ResultScreen> {
             ),
           )
         : _error != null
-            ? Column(
-                key: const ValueKey('error'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _error!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: _loadFare,
-                    child: const Text('Retry'),
+        ? Column(
+            key: const ValueKey('error'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _error!,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(onPressed: _loadFare, child: const Text('Retry')),
+            ],
+          )
+        : hasGovFare
+        ? Column(
+            key: const ValueKey('gov-fare'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Government fare: ৳${_governmentFare!.toStringAsFixed(0)}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Source: Supabase (fares table)',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          )
+        : Column(
+            key: const ValueKey('estimate'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Government fare not found for this pair.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Enter distance (km) to estimate fare:',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _distanceController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(
+                    RegExp(r'^[0-9]*\.?[0-9]*$'),
                   ),
                 ],
-              )
-            : hasGovFare
-                ? Column(
-                    key: const ValueKey('gov-fare'),
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Government fare: ৳${_governmentFare!.toStringAsFixed(0)}',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Source: Supabase (fares table)',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  )
-                : Column(
-                    key: const ValueKey('estimate'),
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Government fare not found for this pair.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Enter distance (km) to estimate fare:',
-                        style: Theme.of(context).textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: _distanceController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                            RegExp(r'^[0-9]*\.?[0-9]*$'),
-                          ),
-                        ],
-                        decoration: const InputDecoration(
-                          labelText: 'Distance (km)',
-                          hintText: 'e.g. 10.5',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      if (estimatedFare != null)
-                        Text(
-                          'Estimated fare: ৳${estimatedFare.toStringAsFixed(0)}  (rate ৳${AppConfig.fallbackRatePerKm}/km)',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        )
-                      else
-                        Text(
-                          'Rate: ৳${AppConfig.fallbackRatePerKm} per km',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                        ),
-                    ],
-                  );
+                decoration: const InputDecoration(
+                  labelText: 'Distance (km)',
+                  hintText: 'e.g. 10.5',
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (estimatedFare != null)
+                Text(
+                  'Estimated fare: ৳${estimatedFare.toStringAsFixed(0)}  (rate ৳${AppConfig.fallbackRatePerKm}/km)',
+                  style: Theme.of(context).textTheme.titleMedium,
+                )
+              else
+                Text(
+                  'Rate: ৳${AppConfig.fallbackRatePerKm} per km',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Route Result')),
@@ -228,10 +218,8 @@ class _ResultScreenState extends State<ResultScreen> {
                       duration: const Duration(milliseconds: 220),
                       switchInCurve: Curves.easeOut,
                       switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      ),
+                      transitionBuilder: (child, animation) =>
+                          FadeTransition(opacity: animation, child: child),
                       child: content,
                     ),
                   ],
