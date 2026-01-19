@@ -13,6 +13,10 @@ void main() {
   testWidgets('Home screen renders', (WidgetTester tester) async {
     await tester.pumpWidget(const LocalTransportInfoApp());
 
+    // Allow the initial async stop loading attempt to complete.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
     expect(find.text('Local Transport Info'), findsOneWidget);
     expect(find.text('Find Your Bus Fare'), findsOneWidget);
     expect(find.text('Search Route'), findsOneWidget);

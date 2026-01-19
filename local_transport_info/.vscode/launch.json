@@ -1,0 +1,36 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flutter (Edge)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "-d",
+        "edge",
+        "--dart-define-from-file=supabase.env.json"
+      ]
+    },
+    {
+      "name": "Flutter (Edge) - Admin",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "-d",
+        "edge",
+        "--dart-define-from-file=supabase.env.json",
+        "--dart-define=IS_ADMIN=true"
+      ]
+    },
+    {
+      "name": "Flutter (Windows)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "-d",
+        "windows",
+        "--dart-define-from-file=supabase.env.json"
+      ]
+    }
+  ]
+}

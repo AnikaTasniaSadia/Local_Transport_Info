@@ -1,28 +1,108 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'profile/profile_screen.dart';
+import 'screens/root_screen.dart';
+import 'supabase/supabase_config.dart';
 
-void main() {
-  runApp(const LocalTransportInfoApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final startupErrors = <String>[];
+  String? startupWarning;
+
+  try {
+    SupabaseConfig.assertValid();
+    await Supabase.initialize(
+      url: SupabaseConfig.url,
+      anonKey: SupabaseConfig.anonKey,
+    );
+  } catch (e) {
+    final message = 'Supabase initialize() failed: $e';
+    startupErrors.add(message);
+    debugPrint(message);
+  }
+
+  final String? startupError = startupErrors.isEmpty
+      ? null
+      : startupErrors.join('\n\n');
+
+  runApp(
+    LocalTransportInfoApp(
+      startupError: startupError,
+      startupWarning: startupWarning,
+    ),
+  );
 }
 
 class LocalTransportInfoApp extends StatelessWidget {
-  const LocalTransportInfoApp({super.key});
+  const LocalTransportInfoApp({
+    super.key,
+    this.startupError,
+    this.startupWarning,
+  });
 
-  static const Color _seedColor = Color(0xFF2E7D32);
+  final String? startupError;
+  final String? startupWarning;
+
+  static const Color _primary = Color(0xFF1B5E20);
+  static const Color _primaryVariant = Color(0xFF2E7D32);
+  static const Color _accent = Color(0xFF00897B);
+  static const Color _background = Color(0xFFF9FAF9);
+  static const Color _card = Color(0xFFFFFFFF);
+  static const Color _textPrimary = Color(0xFF263238);
+  static const Color _textSecondary = Color(0xFF607D8B);
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: _primary,
+          brightness: Brightness.light,
+        ).copyWith(
+          primary: _primary,
+          secondary: _accent,
+          tertiary: _accent,
+          surface: _card,
+          background: _background,
+          onPrimary: Colors.white,
+          onSecondary: Colors.white,
+          onSurface: _textPrimary,
+          onBackground: _textPrimary,
+        );
+
     return MaterialApp(
       title: 'Local Transport Info',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: _seedColor),
-        scaffoldBackgroundColor: Colors.white,
-        cardTheme: const CardThemeData(elevation: 0, margin: EdgeInsets.zero),
+        colorScheme: colorScheme,
+        scaffoldBackgroundColor: _background,
+        textTheme: ThemeData.light().textTheme.apply(
+          bodyColor: _textPrimary,
+          displayColor: _textPrimary,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: _primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: false,
+        ),
+        cardTheme: CardThemeData(
+          color: _card,
+          elevation: 2,
+          margin: EdgeInsets.zero,
+          shadowColor: _textSecondary.withOpacity(0.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
         inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: _card,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          labelStyle: const TextStyle(color: _textSecondary),
+          hintStyle: const TextStyle(color: _textSecondary),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
@@ -32,323 +112,55 @@ class LocalTransportInfoApp extends StatelessWidget {
             ),
           ),
         ),
-      ),
-      home: const HomeScreen(),
-    );
-  }
-}
-
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
-  @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  bool _isEnglish = true;
-  int _bottomNavIndex = 0;
-
-  final List<String> _stops = const [
-    'Mirpur',
-    'Farmgate',
-    'Gulistan',
-    'Jatrabari',
-    'Uttara',
-    'Motijheel',
-  ];
-
-  String? _fromStop;
-  String? _toStop;
-
-  bool get _canSearch =>
-      _fromStop != null && _toStop != null && _fromStop != _toStop;
-
-  void _toggleLanguage() {
-    setState(() {
-      _isEnglish = !_isEnglish;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Language: ${_isEnglish ? 'English' : 'Bangla'}'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _applyPopularRoute({required String from, required String to}) {
-    setState(() {
-      _fromStop = from;
-      _toStop = to;
-    });
-  }
-
-  void _searchRoute() {
-    if (!_canSearch) return;
-
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ResultScreen(fromStop: _fromStop!, toStop: _toStop!),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final borderColor = Theme.of(context).colorScheme.outlineVariant;
-
-    Widget body;
-    switch (_bottomNavIndex) {
-      case 0:
-        body = _buildHomeTab(context, borderColor);
-        break;
-      case 1:
-        body = const _PlaceholderTab(
-          title: 'Map',
-          subtitle: 'Map view coming soon.',
-          icon: Icons.map_outlined,
-        );
-        break;
-      case 2:
-        body = const _PlaceholderTab(
-          title: 'History',
-          subtitle: 'Search history coming soon.',
-          icon: Icons.history,
-        );
-        break;
-      case 3:
-        body = const ProfileScreen();
-        break;
-      default:
-        body = _buildHomeTab(context, borderColor);
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Local Transport Info'),
-        actions: [
-          IconButton(
-            tooltip: _isEnglish ? 'Switch to Bangla' : 'Switch to English',
-            onPressed: _toggleLanguage,
-            icon: const Icon(Icons.translate),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: _background,
+          indicatorColor: _primary.withOpacity(0.12),
+          labelTextStyle: MaterialStateProperty.resolveWith(
+            (states) => TextStyle(
+              color: states.contains(MaterialState.selected)
+                  ? _primary
+                  : _textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          IconButton(
-            tooltip: 'Profile',
-            onPressed: () {
-              setState(() => _bottomNavIndex = 3);
-            },
-            icon: const Icon(Icons.person_outline),
-          ),
-        ],
-      ),
-      body: body,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _bottomNavIndex,
-        onDestinationSelected: (index) {
-          setState(() => _bottomNavIndex = index);
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(icon: Icon(Icons.map_outlined), label: 'Map'),
-          NavigationDestination(icon: Icon(Icons.history), label: 'History'),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHomeTab(BuildContext context, Color borderColor) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Card(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    side: BorderSide(color: borderColor),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Find Your Bus Fare',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Government approved bus fare & routes',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                        const SizedBox(height: 18),
-                        DropdownButtonFormField<String>(
-                          // ignore: deprecated_member_use
-                          value: _fromStop,
-                          items: _stops
-                              .map(
-                                (stop) => DropdownMenuItem<String>(
-                                  value: stop,
-                                  child: Text(stop),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() => _fromStop = value);
-                          },
-                          decoration: const InputDecoration(
-                            labelText: 'From Stop',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        DropdownButtonFormField<String>(
-                          // ignore: deprecated_member_use
-                          value: _toStop,
-                          items: _stops
-                              .map(
-                                (stop) => DropdownMenuItem<String>(
-                                  value: stop,
-                                  child: Text(stop),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() => _toStop = value);
-                          },
-                          decoration: const InputDecoration(
-                            labelText: 'To Stop',
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: _canSearch ? _searchRoute : null,
-                          child: const Text('Search Route'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Popular Routes',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    ActionChip(
-                      label: const Text('Mirpur → Farmgate'),
-                      onPressed: () =>
-                          _applyPopularRoute(from: 'Mirpur', to: 'Farmgate'),
-                    ),
-                    ActionChip(
-                      label: const Text('Gulistan → Jatrabari'),
-                      onPressed: () =>
-                          _applyPopularRoute(from: 'Gulistan', to: 'Jatrabari'),
-                    ),
-                    ActionChip(
-                      label: const Text('Uttara → Motijheel'),
-                      onPressed: () =>
-                          _applyPopularRoute(from: 'Uttara', to: 'Motijheel'),
-                    ),
-                  ],
-                ),
-              ],
+          iconTheme: MaterialStateProperty.resolveWith(
+            (states) => IconThemeData(
+              color: states.contains(MaterialState.selected)
+                  ? _primary
+                  : _textSecondary,
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Icon(icon, size: 34),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            title,
-                            style: Theme.of(context).textTheme.titleLarge,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            subtitle,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+        chipTheme: ChipThemeData(
+          backgroundColor: _card,
+          selectedColor: _primary.withOpacity(0.12),
+          secondarySelectedColor: _primary.withOpacity(0.12),
+          labelStyle: const TextStyle(color: _textPrimary),
+          secondaryLabelStyle: const TextStyle(color: _textPrimary),
+          side: BorderSide(color: _textSecondary.withOpacity(0.3)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
+      home: startupError == null
+          ? RootScreen(startupWarning: startupWarning)
+          : _StartupErrorScreen(message: startupError!),
     );
   }
 }
 
-class ResultScreen extends StatelessWidget {
-  const ResultScreen({super.key, required this.fromStop, required this.toStop});
+class _StartupErrorScreen extends StatelessWidget {
+  const _StartupErrorScreen({required this.message});
 
-  final String fromStop;
-  final String toStop;
+  final String message;
 
   @override
   Widget build(BuildContext context) {
     final borderColor = Theme.of(context).colorScheme.outlineVariant;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Route Result')),
+      appBar: AppBar(title: const Text('Startup Error')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Center(
@@ -366,16 +178,35 @@ class ResultScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '$fromStop → $toStop',
+                      'App failed to start',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Text(
-                      'Fare details will appear here.',
+                      message,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Common fixes:',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '1) Run with Supabase credentials using --dart-define\n'
+                      '   or --dart-define-from-file=supabase.env.json\n'
+                      '2) If running on Web, ensure your Supabase URL/key are correct',
+                    ),
+                    const SizedBox(height: 14),
+                    if (kIsWeb)
+                      Text(
+                        'Tip: Open DevTools Console for details.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                   ],
                 ),
               ),
