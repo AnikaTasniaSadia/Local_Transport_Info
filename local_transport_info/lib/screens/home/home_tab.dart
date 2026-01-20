@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../data/models/fare_quote.dart';
@@ -65,6 +66,24 @@ class _HomeTabState extends State<HomeTab> {
     final km = _distanceKm;
     if (km == null) return null;
     return km * AppConfig.fallbackRatePerKm;
+  }
+
+  double _payableFare(double fare) {
+    final rounded = (fare / 5).ceil() * 5;
+    return rounded < 10 ? 10 : rounded.toDouble();
+  }
+
+  double? _estimateDistanceKm(String fromId, String toId) {
+    final from = StopCoordinates.ofStop(fromId);
+    final to = StopCoordinates.ofStop(toId);
+    if (from == null || to == null) return null;
+    final meters = Geolocator.distanceBetween(
+      from.latitude,
+      from.longitude,
+      to.latitude,
+      to.longitude,
+    );
+    return meters / 1000;
   }
 
   bool get _canSearch =>
@@ -232,6 +251,10 @@ class _HomeTabState extends State<HomeTab> {
     final fromLabel = _stopLabel(fromId);
     final toLabel = _stopLabel(toId);
     final estimatedFare = _estimatedFare;
+    final autoDistanceKm = _estimateDistanceKm(fromId, toId);
+    final autoFare = autoDistanceKm == null
+        ? null
+        : autoDistanceKm * AppConfig.fallbackRatePerKm;
 
     return Card(
       child: Padding(
@@ -263,6 +286,11 @@ class _HomeTabState extends State<HomeTab> {
             ] else if (widget.fareQuote != null) ...[
               Text(
                 'Government fare: ৳${widget.fareQuote!.fare.toStringAsFixed(0)}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Payable fare: ৳${_payableFare(widget.fareQuote!.fare).toStringAsFixed(0)}',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               if (widget.fareQuote!.routeNo != null &&
@@ -277,34 +305,66 @@ class _HomeTabState extends State<HomeTab> {
               ],
             ] else ...[
               Text(
-                'Government fare not found. Enter distance to estimate:',
-                style: Theme.of(context).textTheme.bodyMedium,
+                'Government fare not found.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 10),
-              TextField(
-                controller: _distanceController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: const InputDecoration(
-                  labelText: 'Distance (km)',
-                  hintText: 'e.g. 10.5',
-                ),
-                onChanged: (_) => setState(() {}),
-              ),
-              const SizedBox(height: 10),
-              if (estimatedFare != null)
+              if (autoFare != null) ...[
                 Text(
-                  'Estimated fare: ৳${estimatedFare.toStringAsFixed(0)}  (rate ৳${AppConfig.fallbackRatePerKm}/km)',
+                  'Estimated fare (approx): ৳${autoFare.toStringAsFixed(0)}',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Payable fare: ৳${_payableFare(autoFare).toStringAsFixed(0)}',
                   style: Theme.of(context).textTheme.titleMedium,
-                )
-              else
+                ),
+                const SizedBox(height: 4),
                 Text(
-                  'Rate: ৳${AppConfig.fallbackRatePerKm} per km',
+                  'Distance: ${autoDistanceKm!.toStringAsFixed(2)} km · Rate ৳${AppConfig.fallbackRatePerKm}/km',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
+                const SizedBox(height: 10),
+              ] else ...[
+                Text(
+                  'Enter distance to estimate fare:',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _distanceController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Distance (km)',
+                    hintText: 'e.g. 10.5',
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+                const SizedBox(height: 10),
+                if (estimatedFare != null) ...[
+                  Text(
+                    'Estimated fare: ৳${estimatedFare.toStringAsFixed(0)}  (rate ৳${AppConfig.fallbackRatePerKm}/km)',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Payable fare: ৳${_payableFare(estimatedFare).toStringAsFixed(0)}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ] else
+                  Text(
+                    'Rate: ৳${AppConfig.fallbackRatePerKm} per km',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+              ],
             ],
           ],
         ),
