@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/models/stop.dart';
 import '../data/models/fare_quote.dart';
 import '../data/models/route_info.dart';
+import '../data/models/search_history.dart';
 
 /// Single place for all Supabase database operations.
 class SupabaseService {
@@ -26,6 +27,7 @@ class SupabaseService {
   static const String _fareLegacyTable = 'fare';
 
   static const String _adminsTable = 'admins';
+  static const String _historyTable = 'search_history';
 
   User? get currentUser => _client.auth.currentUser;
 
@@ -38,7 +40,48 @@ class SupabaseService {
     return _client.auth.signInWithPassword(email: email, password: password);
   }
 
+  Future<AuthResponse> signUpWithPassword({
+    required String email,
+    required String password,
+  }) {
+    return _client.auth.signUp(email: email, password: password);
+  }
+
   Future<void> signOut() => _client.auth.signOut();
+
+  Future<void> logSearchHistory(SearchHistoryEntry entry) async {
+    final user = currentUser;
+    if (user == null) return;
+
+    try {
+      await _client.from(_historyTable).insert(entry.toInsertMap(user.id));
+    } on PostgrestException catch (e) {
+      throw Exception('Failed to save history: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to save history: $e');
+    }
+  }
+
+  Future<List<SearchHistoryEntry>> fetchSearchHistory() async {
+    final user = currentUser;
+    if (user == null) return const [];
+
+    try {
+      final response = await _client
+          .from(_historyTable)
+          .select('id, from_stop, to_stop, fare, route_no, searched_at')
+          .eq('user_id', user.id)
+          .order('searched_at', ascending: false)
+          .limit(200);
+
+      final rows = (response as List).cast<Map<String, dynamic>>();
+      return rows.map(SearchHistoryEntry.fromMap).toList(growable: false);
+    } on PostgrestException catch (e) {
+      throw Exception('Failed to load history: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to load history: $e');
+    }
+  }
 
   /// Returns true if the current user is listed in the `admins` table.
   Future<bool> isCurrentUserAdmin() async {

@@ -129,3 +129,29 @@ commit;
 --          or email = (auth.jwt() ->> 'email')
 --     )
 --   );
+
+-- Search history (user-specific)
+-- create table if not exists public.search_history (
+--   id bigserial primary key,
+--   user_id uuid not null,
+--   from_stop text not null,
+--   to_stop text not null,
+--   fare numeric,
+--   route_no text,
+--   searched_at timestamptz default now()
+-- );
+-- create index if not exists search_history_user_id_idx
+--   on public.search_history(user_id, searched_at desc);
+
+-- RLS for search history
+-- alter table public.search_history enable row level security;
+-- drop policy if exists "users read own history" on public.search_history;
+-- drop policy if exists "users insert own history" on public.search_history;
+--
+-- create policy "users read own history" on public.search_history
+--   for select to authenticated
+--   using (auth.uid() = user_id);
+--
+-- create policy "users insert own history" on public.search_history
+--   for insert to authenticated
+--   with check (auth.uid() = user_id);

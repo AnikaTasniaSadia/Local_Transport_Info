@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../data/models/stop.dart';
 import '../data/models/fare_quote.dart';
+import '../data/models/search_history.dart';
 import '../profile/profile_screen.dart';
 import '../services/app_config.dart';
 import '../services/supabase_service.dart';
 import 'admin/admin_login_screen.dart';
 import 'admin/admin_screen.dart';
+import 'auth/user_auth_screen.dart';
+import 'history/history_screen.dart';
 import 'home/home_tab.dart';
 import 'map/map_screen.dart';
 
@@ -38,6 +41,11 @@ class _RootScreenState extends State<RootScreen> {
   String? _fareError;
   FareQuote? _fareQuote;
   bool _hasSearched = false;
+
+  List<SearchHistoryEntry> _history = const [];
+  List<SearchHistoryEntry> _localHistory = const [];
+  bool _isLoadingHistory = false;
+  String? _historyError;
 
   @override
   void initState() {
@@ -144,6 +152,13 @@ class _RootScreenState extends State<RootScreen> {
         toStopId: toStopId,
       );
 
+      await _logHistory(
+        fromStopId: fromStopId,
+        toStopId: toStopId,
+        fare: quote?.fare,
+        routeNo: quote?.routeNo,
+      );
+
       if (!mounted) return;
       setState(() {
         _fareQuote = quote;
@@ -156,6 +171,87 @@ class _RootScreenState extends State<RootScreen> {
         _isLoadingFare = false;
       });
     }
+  }
+
+  Future<void> _logHistory({
+    required String fromStopId,
+    required String toStopId,
+    required double? fare,
+    required String? routeNo,
+  }) async {
+    final entry = SearchHistoryEntry(
+      fromStopId: fromStopId,
+      toStopId: toStopId,
+      fare: fare,
+      routeNo: routeNo,
+      searchedAt: DateTime.now(),
+    );
+
+    setState(() {
+      _localHistory = [entry, ..._localHistory];
+    });
+
+    if (_service.isSignedIn) {
+      try {
+        await _service.logSearchHistory(entry);
+        if (!mounted) return;
+        await _loadHistory();
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _historyError = e.toString());
+      }
+    }
+  }
+
+  Future<void> _loadHistory() async {
+    if (_isLoadingHistory) return;
+
+    setState(() {
+      _isLoadingHistory = true;
+      _historyError = null;
+    });
+
+    if (!_service.isSignedIn) {
+      setState(() {
+        _history = const [];
+        _isLoadingHistory = false;
+      });
+      return;
+    }
+
+    try {
+      final items = await _service.fetchSearchHistory();
+      if (!mounted) return;
+      setState(() {
+        _history = items;
+        _isLoadingHistory = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _historyError = e.toString();
+        _isLoadingHistory = false;
+      });
+    }
+  }
+
+  Future<void> _openUserAuth() async {
+    final didLogin = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => UserAuthScreen(service: _service)),
+    );
+
+    if (!mounted) return;
+    if (didLogin == true) {
+      await _loadHistory();
+    }
+  }
+
+  Future<void> _signOutUser() async {
+    await _service.signOut();
+    if (!mounted) return;
+    setState(() {
+      _history = const [];
+    });
   }
 
   Future<void> _openAdmin() async {
@@ -255,10 +351,17 @@ class _RootScreenState extends State<RootScreen> {
           toStopId: _toStopId,
         );
       case 2:
-        return const _PlaceholderTab(
-          title: 'History',
-          subtitle: 'Search history coming soon.',
-          icon: Icons.history,
+        return HistoryScreen(
+          isSignedIn: _service.isSignedIn,
+          userEmail: _service.currentUser?.email,
+          isLoading: _isLoadingHistory,
+          history: _service.isSignedIn ? _history : _localHistory,
+          error: _historyError,
+          stops: _stops,
+          isEnglish: _isEnglish,
+          onRefresh: _loadHistory,
+          onLogin: _openUserAuth,
+          onSignOut: _signOutUser,
         );
       case 3:
         return const ProfileScreen();
@@ -310,8 +413,12 @@ class _RootScreenState extends State<RootScreen> {
             borderRadius: BorderRadius.circular(28),
             child: NavigationBar(
               selectedIndex: _bottomNavIndex,
-              onDestinationSelected: (index) =>
-                  setState(() => _bottomNavIndex = index),
+              onDestinationSelected: (index) {
+                setState(() => _bottomNavIndex = index);
+                if (index == 2) {
+                  _loadHistory();
+                }
+              },
               destinations: const [
                 NavigationDestination(
                   icon: Icon(Icons.home_outlined),
