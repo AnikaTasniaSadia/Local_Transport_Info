@@ -47,6 +47,10 @@ class SupabaseService {
     return _client.auth.signUp(email: email, password: password);
   }
 
+  Future<void> signInWithGoogle() {
+    return _client.auth.signInWithOAuth(OAuthProvider.google);
+  }
+
   Future<void> signOut() => _client.auth.signOut();
 
   Future<void> logSearchHistory(SearchHistoryEntry entry) async {

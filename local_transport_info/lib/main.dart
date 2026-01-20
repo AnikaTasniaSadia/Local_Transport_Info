@@ -48,8 +48,6 @@ class LocalTransportInfoApp extends StatelessWidget {
   static const Color _primary = Color(0xFF00A86B);
   static const Color _secondary = Color(0xFF1E3A8A);
   static const Color _accentBlue = Color(0xFF38BDF8);
-  static const Color _accentAmber = Color(0xFFF59E0B);
-  static const Color _accentCoral = Color(0xFFFB7185);
   static const Color _background = Color(0xFFF8FAFC);
   static const Color _card = Color(0xFFFFFFFF);
   static const Color _textPrimary = Color(0xFF0F172A);

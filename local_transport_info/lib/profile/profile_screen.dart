@@ -1,6 +1,3 @@
-import 'dart:typed_data';
-
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../screens/auth/user_auth_screen.dart';
@@ -14,8 +11,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  Uint8List? _profileImageBytes;
-
   final SupabaseService _service = SupabaseService();
 
   final _nameController = TextEditingController(text: '');
@@ -40,41 +35,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _pickProfileImage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-      withData: true,
-    );
-
-    if (result == null) return;
-
-    final bytes = result.files.single.bytes;
-    if (bytes == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not load that image on this platform.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    setState(() {
-      _profileImageBytes = bytes;
-    });
-  }
-
-  void _removeProfileImage() {
-    setState(() {
-      _profileImageBytes = null;
-    });
-  }
-
   void _saveProfile() {
     FocusScope.of(context).unfocus();
-
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Profile saved (local only).'),
@@ -155,6 +117,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    if (_authSubmitting) return;
+    setState(() => _authSubmitting = true);
+    try {
+      await _service.signInWithGoogle();
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google sign-in failed: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _authSubmitting = false);
+    }
+  }
+
+  String _initials() {
+    final name = _nameController.text.trim();
+    if (name.isNotEmpty) {
+      final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
+      if (parts.isNotEmpty) {
+        final first = parts.first.characters.first.toUpperCase();
+        final last = parts.length > 1
+            ? parts.last.characters.first.toUpperCase()
+            : '';
+        return '$first$last';
+      }
+    }
+    final email = _emailController.text.trim();
+    if (email.isNotEmpty) return email.characters.first.toUpperCase();
+    return 'C';
+  }
+
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
@@ -162,316 +161,351 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final isSignedIn = _service.isSignedIn;
     final userEmail = _service.currentUser?.email;
 
-    return Scaffold(
-      body: SafeArea(
+    return Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (!isSignedIn) ...[
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(18),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final maxWidth = constraints.maxWidth.isFinite
+                  ? constraints.maxWidth
+                  : 520.0;
+              final contentWidth = maxWidth > 520 ? 520.0 : maxWidth;
+
+              return Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: contentWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [primary, secondary],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: Row(
                           children: [
-                            Text(
-                              _authRegister
-                                  ? 'Create commuter account'
-                                  : 'Login to your account',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _authRegister
-                                  ? 'Use email and password to register.'
-                                  : 'Use email and password to log in.',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onSurfaceVariant,
-                                  ),
-                            ),
-                            const SizedBox(height: 16),
-                            TextField(
-                              controller: _authEmailController,
-                              keyboardType: TextInputType.emailAddress,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'Email',
-                                prefixIcon: Icon(Icons.email_outlined),
+                            CircleAvatar(
+                              radius: 30,
+                              backgroundColor: Colors.white,
+                              child: Text(
+                                _initials(),
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      color: primary,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            TextField(
-                              controller: _authPasswordController,
-                              obscureText: _authObscure,
-                              onSubmitted: (_) => _submitInlineAuth(),
-                              decoration: InputDecoration(
-                                labelText: 'Password',
-                                prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  tooltip: _authObscure ? 'Show' : 'Hide',
-                                  onPressed: () => setState(
-                                    () => _authObscure = !_authObscure,
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Commuter Profile',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(color: Colors.white),
                                   ),
-                                  icon: Icon(
-                                    _authObscure
-                                        ? Icons.visibility_outlined
-                                        : Icons.visibility_off_outlined,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    isSignedIn
+                                        ? (userEmail ?? 'Account connected')
+                                        : 'Sign in to sync history & routes',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(color: Colors.white70),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (isSignedIn)
+                              FilledButton.tonal(
+                                onPressed: _signOut,
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(0, 40),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
                                   ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            FilledButton(
-                              onPressed: _authSubmitting
-                                  ? null
-                                  : _submitInlineAuth,
-                              child: _authSubmitting
-                                  ? const SizedBox(
-                                      height: 18,
-                                      width: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : Text(
-                                      _authRegister
-                                          ? 'Create Account'
-                                          : 'Login',
-                                    ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextButton(
-                              onPressed: _authSubmitting
-                                  ? null
-                                  : () => setState(
-                                    () => _authRegister = !_authRegister,
-                                  ),
-                              child: Text(
-                                _authRegister
-                                    ? 'Already have an account? Login'
-                                    : 'New here? Create account',
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton.icon(
+                                child: const Text('Sign out'),
+                              )
+                            else
+                              FilledButton.tonal(
                                 onPressed: _openAuth,
-                                icon: const Icon(Icons.open_in_new),
-                                label: const Text('Open full login page'),
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(0, 40),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                ),
+                                child: const Text('Login'),
                               ),
-                            ),
                           ],
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Row(
-                        children: [
-                          Container(
-                            height: 44,
-                            width: 44,
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Icon(
-                              Icons.verified_user_outlined,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              primary.withValues(alpha: 0.95),
+                              secondary.withValues(alpha: 0.85),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          borderRadius: BorderRadius.circular(22),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.12),
+                              blurRadius: 18,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
                               children: [
-                                Text(
-                                  isSignedIn
-                                      ? 'Signed in'
-                                      : 'Login or Register',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleMedium
-                                      ?.copyWith(fontWeight: FontWeight.w700),
+                                const Icon(
+                                  Icons.lock_open,
+                                  color: Colors.white,
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  isSignedIn
-                                      ? (userEmail ?? 'Account connected')
-                                      : 'Sign in to sync your history',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodySmall
-                                      ?.copyWith(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Commuter Login',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                       ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Fast access to routes & history sync',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(color: Colors.white70),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ChoiceChip(
+                                  label: const Text('Login'),
+                                  selected: !_authRegister,
+                                  onSelected: (v) =>
+                                      setState(() => _authRegister = !v),
+                                ),
+                                const SizedBox(width: 6),
+                                ChoiceChip(
+                                  label: const Text('Register'),
+                                  selected: _authRegister,
+                                  onSelected: (v) =>
+                                      setState(() => _authRegister = v),
                                 ),
                               ],
                             ),
-                          ),
-                          if (isSignedIn)
-                            TextButton(
-                              onPressed: _signOut,
-                              child: const Text('Sign out'),
-                            )
-                          else
-                            FilledButton.tonal(
-                              onPressed: _openAuth,
-                              child: const Text('Login'),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [primary, secondary],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 32,
-                          backgroundColor: Colors.white,
-                          backgroundImage: _profileImageBytes == null
-                              ? null
-                              : MemoryImage(_profileImageBytes!),
-                          child: _profileImageBytes == null
-                              ? Icon(
-                                  Icons.person_outline,
-                                  color: primary,
-                                  size: 32,
-                                )
-                              : null,
+                            const SizedBox(height: 16),
+                            if (!isSignedIn) ...[
+                              TextField(
+                                controller: _authEmailController,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                decoration: InputDecoration(
+                                  labelText: 'Email',
+                                  prefixIcon: const Icon(Icons.email_outlined),
+                                  filled: true,
+                                  fillColor: Colors.white.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _authPasswordController,
+                                obscureText: _authObscure,
+                                onSubmitted: (_) => _submitInlineAuth(),
+                                decoration: InputDecoration(
+                                  labelText: 'Password',
+                                  prefixIcon: const Icon(Icons.lock_outline),
+                                  filled: true,
+                                  fillColor: Colors.white.withValues(
+                                    alpha: 0.9,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    tooltip: _authObscure ? 'Show' : 'Hide',
+                                    onPressed: () => setState(
+                                      () => _authObscure = !_authObscure,
+                                    ),
+                                    icon: Icon(
+                                      _authObscure
+                                          ? Icons.visibility_outlined
+                                          : Icons.visibility_off_outlined,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              FilledButton(
+                                onPressed: _authSubmitting
+                                    ? null
+                                    : _submitInlineAuth,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: primary,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                                child: _authSubmitting
+                                    ? const SizedBox(
+                                        height: 18,
+                                        width: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        _authRegister
+                                            ? 'Create Account'
+                                            : 'Login',
+                                      ),
+                              ),
+                              const SizedBox(height: 10),
+                              OutlinedButton.icon(
+                                onPressed: _authSubmitting
+                                    ? null
+                                    : _signInWithGoogle,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                  side: const BorderSide(color: Colors.white70),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                                icon: const Icon(Icons.g_mobiledata),
+                                label: const Text('Continue with Gmail'),
+                              ),
+                              const SizedBox(height: 4),
+                              TextButton.icon(
+                                onPressed: _openAuth,
+                                icon: const Icon(Icons.open_in_new),
+                                label: const Text('Open full login page'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ] else ...[
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.verified,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'You are signed in and your history is synced.',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: Colors.white70),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
+                      ),
+                      const SizedBox(height: 16),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(18),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Profile',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(color: Colors.white),
+                                'Personal Details',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Basic information & profile photo',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(color: Colors.white70),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _nameController,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Full name',
+                                  prefixIcon: Icon(Icons.badge_outlined),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _emailController,
+                                keyboardType: TextInputType.emailAddress,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Email',
+                                  prefixIcon: Icon(Icons.email_outlined),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _phoneController,
+                                keyboardType: TextInputType.phone,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'Phone',
+                                  prefixIcon: Icon(Icons.phone_outlined),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: _cityController,
+                                textInputAction: TextInputAction.done,
+                                decoration: const InputDecoration(
+                                  labelText: 'City',
+                                  prefixIcon: Icon(
+                                    Icons.location_city_outlined,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              FilledButton(
+                                onPressed: _saveProfile,
+                                child: const Text('Save Profile'),
                               ),
                             ],
                           ),
                         ),
-                        IconButton.filledTonal(
-                          tooltip: 'Add profile image',
-                          onPressed: _pickProfileImage,
-                          icon: const Icon(Icons.camera_alt_outlined),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              FilledButton.tonal(
-                                onPressed: _pickProfileImage,
-                                child: const Text('Choose Image'),
-                              ),
-                              const SizedBox(width: 8),
-                              TextButton(
-                                onPressed: _profileImageBytes == null
-                                    ? null
-                                    : _removeProfileImage,
-                                child: const Text('Remove'),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 18),
-                          TextField(
-                            controller: _nameController,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Full name',
-                              prefixIcon: Icon(Icons.badge_outlined),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Email',
-                              prefixIcon: Icon(Icons.email_outlined),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            textInputAction: TextInputAction.next,
-                            decoration: const InputDecoration(
-                              labelText: 'Phone',
-                              prefixIcon: Icon(Icons.phone_outlined),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: _cityController,
-                            textInputAction: TextInputAction.done,
-                            decoration: const InputDecoration(
-                              labelText: 'City',
-                              prefixIcon: Icon(Icons.location_city_outlined),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          FilledButton(
-                            onPressed: _saveProfile,
-                            child: const Text('Save'),
-                          ),
-                        ],
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
         ),
       ),

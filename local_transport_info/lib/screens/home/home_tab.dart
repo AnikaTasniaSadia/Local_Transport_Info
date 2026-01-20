@@ -465,7 +465,7 @@ class _HomeTabState extends State<HomeTab> {
                 Stack(
                   children: [
                     Container(
-                      height: 210,
+                      constraints: const BoxConstraints(minHeight: 210),
                       decoration: const BoxDecoration(
                         gradient: LinearGradient(
                           colors: [Color(0xFFF8FAFC), Color(0xFFECFEFF)],

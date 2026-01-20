@@ -34,12 +34,20 @@ class HistoryScreen extends StatelessWidget {
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final maxWidth = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : 560.0;
+            final contentWidth = maxWidth > 560 ? 560.0 : maxWidth;
+
+            return Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: contentWidth,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(18),
@@ -92,6 +100,12 @@ class HistoryScreen extends StatelessWidget {
                         else
                           FilledButton.tonal(
                             onPressed: onLogin,
+                            style: FilledButton.styleFrom(
+                              minimumSize: const Size(0, 40),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                            ),
                             child: const Text('Login'),
                           ),
                       ],
@@ -245,9 +259,11 @@ class HistoryScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-              ],
-            ),
-          ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
