@@ -34,6 +34,7 @@ class _AdminScreenState extends State<AdminScreen> {
   String? _routeId;
 
   final TextEditingController _fareController = TextEditingController();
+  final TextEditingController _routeIdController = TextEditingController();
   bool _saving = false;
 
   @override
@@ -45,6 +46,7 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   void dispose() {
     _fareController.dispose();
+    _routeIdController.dispose();
     super.dispose();
   }
 
@@ -62,6 +64,9 @@ class _AdminScreenState extends State<AdminScreen> {
       setState(() {
         _routes = routes;
         _routeId ??= routes.isNotEmpty ? routes.first.routeId : null;
+        if (_routeId != null && _routeIdController.text.isEmpty) {
+          _routeIdController.text = _routeId!;
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -236,23 +241,46 @@ class _AdminScreenState extends State<AdminScreen> {
                           Row(
                             children: [
                               Expanded(
-                                child: DropdownMenu<String>(
-                                  expandedInsets: EdgeInsets.zero,
-                                  label: const Text('Route'),
-                                  enabled: !_loadingRoutes,
-                                  initialSelection: _routeId,
-                                  onSelected: (v) =>
-                                      setState(() => _routeId = v),
-                                  dropdownMenuEntries: _routes
-                                      .map(
-                                        (r) => DropdownMenuEntry<String>(
-                                          value: r.routeId,
-                                          label: r.displayName(
+                                child: Autocomplete<RouteInfo>(
+                                  displayStringForOption: (route) => route
+                                      .displayName(isEnglish: widget.isEnglish),
+                                  optionsBuilder: (value) {
+                                    final query = value.text
+                                        .trim()
+                                        .toLowerCase();
+                                    if (query.isEmpty) return _routes;
+                                    return _routes.where((route) {
+                                      final name = route
+                                          .displayName(
                                             isEnglish: widget.isEnglish,
+                                          )
+                                          .toLowerCase();
+                                      return name.contains(query) ||
+                                          route.routeId.toLowerCase().contains(
+                                            query,
+                                          ) ||
+                                          route.routeNo.toLowerCase().contains(
+                                            query,
+                                          );
+                                    });
+                                  },
+                                  onSelected: (route) {
+                                    setState(() => _routeId = route.routeId);
+                                    _routeIdController.text = route.routeId;
+                                  },
+                                  fieldViewBuilder:
+                                      (context, controller, focusNode, _) {
+                                        return TextField(
+                                          controller: controller,
+                                          focusNode: focusNode,
+                                          decoration: const InputDecoration(
+                                            labelText: 'Route (search)',
+                                            prefixIcon: Icon(
+                                              Icons.route_outlined,
+                                            ),
                                           ),
-                                        ),
-                                      )
-                                      .toList(growable: false),
+                                        );
+                                      },
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -270,6 +298,24 @@ class _AdminScreenState extends State<AdminScreen> {
                                     : const Icon(Icons.refresh),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _routeIdController,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: 'Route ID',
+                              hintText: 'e.g. a101',
+                              helperText: _routes.isEmpty
+                                  ? 'No routes loaded. Type a new route ID.'
+                                  : 'You can type a new route ID to add fares.',
+                            ),
+                            onChanged: (value) {
+                              final trimmed = value.trim();
+                              setState(() {
+                                _routeId = trimmed.isEmpty ? null : trimmed;
+                              });
+                            },
                           ),
                           const SizedBox(height: 12),
                           DropdownMenu<String>(

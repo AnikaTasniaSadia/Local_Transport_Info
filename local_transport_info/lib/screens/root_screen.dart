@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../data/models/stop.dart';
+import '../data/models/fare_quote.dart';
 import '../profile/profile_screen.dart';
 import '../services/app_config.dart';
 import '../services/supabase_service.dart';
 import 'admin/admin_login_screen.dart';
 import 'admin/admin_screen.dart';
 import 'home/home_tab.dart';
-import 'home/result_screen.dart';
 import 'map/map_screen.dart';
 
 class RootScreen extends StatefulWidget {
@@ -33,6 +33,11 @@ class _RootScreenState extends State<RootScreen> {
 
   String? _fromStopId;
   String? _toStopId;
+
+  bool _isLoadingFare = false;
+  String? _fareError;
+  FareQuote? _fareQuote;
+  bool _hasSearched = false;
 
   @override
   void initState() {
@@ -97,37 +102,7 @@ class _RootScreenState extends State<RootScreen> {
     }
   }
 
-  String _normalizeName(String input) {
-    return input.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
-  }
-
-  String? _findStopIdByName(String query) {
-    if (_stops.isEmpty) return null;
-
-    final q = _normalizeName(query);
-
-    for (final stop in _stops) {
-      final en = _normalizeName(stop.nameEn);
-      final bn = _normalizeName(stop.nameBn);
-      if (en.isNotEmpty && en == q) return stop.stopId;
-      if (bn.isNotEmpty && bn == q) return stop.stopId;
-    }
-
-    for (final stop in _stops) {
-      final en = _normalizeName(stop.nameEn);
-      final bn = _normalizeName(stop.nameBn);
-      if (en.isNotEmpty && (en.contains(q) || q.contains(en))) {
-        return stop.stopId;
-      }
-      if (bn.isNotEmpty && (bn.contains(q) || q.contains(bn))) {
-        return stop.stopId;
-      }
-    }
-
-    return null;
-  }
-
-  void _applyPopularRoute({required String fromEn, required String toEn}) {
+  void _applyPopularRoute({required String fromId, required String toId}) {
     if (_isLoadingStops) return;
     if (_stops.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -140,46 +115,47 @@ class _RootScreenState extends State<RootScreen> {
       return;
     }
 
-    final fromId = _findStopIdByName(fromEn);
-    final toId = _findStopIdByName(toEn);
-
-    if (fromId == null || toId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Popular route stops not found in the stop list.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
     setState(() {
       _fromStopId = fromId;
       _toStopId = toId;
+      _fareQuote = null;
+      _fareError = null;
+      _hasSearched = false;
     });
   }
 
-  void _searchRoute() {
+  Future<void> _searchRoute() async {
     final fromStopId = _fromStopId;
     final toStopId = _toStopId;
 
     if (fromStopId == null || toStopId == null) return;
     if (fromStopId == toStopId) return;
 
-    final fromStop = _stops.firstWhere((s) => s.stopId == fromStopId);
-    final toStop = _stops.firstWhere((s) => s.stopId == toStopId);
+    setState(() {
+      _isLoadingFare = true;
+      _fareError = null;
+      _fareQuote = null;
+      _hasSearched = true;
+    });
 
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ResultScreen(
-          service: _service,
-          fromStopId: fromStopId,
-          toStopId: toStopId,
-          fromStopName: fromStop.displayName(isEnglish: _isEnglish),
-          toStopName: toStop.displayName(isEnglish: _isEnglish),
-        ),
-      ),
-    );
+    try {
+      final quote = await _service.fetchFareQuote(
+        fromStopId: fromStopId,
+        toStopId: toStopId,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        _fareQuote = quote;
+        _isLoadingFare = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _fareError = e.toString();
+        _isLoadingFare = false;
+      });
+    }
   }
 
   Future<void> _openAdmin() async {
@@ -251,9 +227,23 @@ class _RootScreenState extends State<RootScreen> {
           stopsLoadError: _stopsLoadError,
           fromStopId: _fromStopId,
           toStopId: _toStopId,
+          fareQuote: _fareQuote,
+          fareError: _fareError,
+          isLoadingFare: _isLoadingFare,
+          hasSearched: _hasSearched,
           onReloadStops: _loadStops,
-          onFromChanged: (v) => setState(() => _fromStopId = v),
-          onToChanged: (v) => setState(() => _toStopId = v),
+          onFromChanged: (v) => setState(() {
+            _fromStopId = v;
+            _fareQuote = null;
+            _fareError = null;
+            _hasSearched = false;
+          }),
+          onToChanged: (v) => setState(() {
+            _toStopId = v;
+            _fareQuote = null;
+            _fareError = null;
+            _hasSearched = false;
+          }),
           onSearch: _searchRoute,
           onApplyPopularRoute: _applyPopularRoute,
         );

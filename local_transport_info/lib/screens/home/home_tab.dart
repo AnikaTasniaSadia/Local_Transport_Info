@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../data/models/fare_quote.dart';
 import '../../data/models/stop.dart';
+import '../../services/app_config.dart';
 import '../map/stop_coordinates.dart';
 
-class HomeTab extends StatelessWidget {
+class HomeTab extends StatefulWidget {
   const HomeTab({
     super.key,
     required this.isEnglish,
@@ -13,6 +15,10 @@ class HomeTab extends StatelessWidget {
     required this.stopsLoadError,
     required this.fromStopId,
     required this.toStopId,
+    required this.fareQuote,
+    required this.fareError,
+    required this.isLoadingFare,
+    required this.hasSearched,
     required this.onReloadStops,
     required this.onFromChanged,
     required this.onToChanged,
@@ -28,19 +34,53 @@ class HomeTab extends StatelessWidget {
   final String? fromStopId;
   final String? toStopId;
 
+  final FareQuote? fareQuote;
+  final String? fareError;
+  final bool isLoadingFare;
+  final bool hasSearched;
+
   final VoidCallback onReloadStops;
   final ValueChanged<String?> onFromChanged;
   final ValueChanged<String?> onToChanged;
-  final VoidCallback onSearch;
-  final void Function({required String fromEn, required String toEn})
+  final Future<void> Function() onSearch;
+  final void Function({required String fromId, required String toId})
   onApplyPopularRoute;
 
+  @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> {
+  final TextEditingController _distanceController = TextEditingController();
+
+  double? get _distanceKm {
+    final text = _distanceController.text.trim();
+    if (text.isEmpty) return null;
+    final value = double.tryParse(text);
+    if (value == null || value <= 0) return null;
+    return value;
+  }
+
+  double? get _estimatedFare {
+    final km = _distanceKm;
+    if (km == null) return null;
+    return km * AppConfig.fallbackRatePerKm;
+  }
+
   bool get _canSearch =>
-      fromStopId != null && toStopId != null && fromStopId != toStopId;
+      widget.fromStopId != null &&
+      widget.toStopId != null &&
+      widget.fromStopId != widget.toStopId;
+
+  @override
+  void dispose() {
+    _distanceController.dispose();
+    super.dispose();
+  }
 
   Widget _buildMiniMap(BuildContext context) {
-    final from = StopCoordinates.ofStop(fromStopId);
-    final to = StopCoordinates.ofStop(toStopId);
+    final from = StopCoordinates.ofStop(widget.fromStopId);
+    final to = StopCoordinates.ofStop(widget.toStopId);
 
     if (from == null || to == null) {
       return Card(
@@ -66,12 +106,12 @@ class HomeTab extends StatelessWidget {
       Marker(
         markerId: const MarkerId('from'),
         position: from,
-        infoWindow: InfoWindow(title: _stopName(fromStopId)),
+        infoWindow: InfoWindow(title: _stopName(widget.fromStopId)),
       ),
       Marker(
         markerId: const MarkerId('to'),
         position: to,
-        infoWindow: InfoWindow(title: _stopName(toStopId)),
+        infoWindow: InfoWindow(title: _stopName(widget.toStopId)),
       ),
     };
 
@@ -113,12 +153,172 @@ class HomeTab extends StatelessWidget {
 
   String _stopName(String? stopId) {
     if (stopId == null) return '';
-    final stop = stops.where((s) => s.stopId == stopId).firstOrNull;
-    return stop?.displayName(isEnglish: isEnglish) ?? stopId;
+    final stop = widget.stops.where((s) => s.stopId == stopId).firstOrNull;
+    return stop?.displayName(isEnglish: widget.isEnglish) ?? stopId;
+  }
+
+  String _stopLabel(String stopId) {
+    final stop = widget.stops.where((s) => s.stopId == stopId).firstOrNull;
+    return stop?.displayName(isEnglish: widget.isEnglish) ?? stopId;
+  }
+
+  Iterable<Stop> _filterStops(String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return widget.stops;
+    return widget.stops.where((stop) {
+      final name = stop.displayName(isEnglish: widget.isEnglish).toLowerCase();
+      return name.contains(q) || stop.stopId.toLowerCase().contains(q);
+    });
+  }
+
+  Widget _buildStopAutocomplete({
+    required String label,
+    required String? selectedId,
+    required ValueChanged<String?> onSelected,
+  }) {
+    return Autocomplete<Stop>(
+      key: ValueKey('${selectedId ?? label}-${widget.isEnglish}'),
+      initialValue: TextEditingValue(text: _stopLabel(selectedId ?? '')),
+      displayStringForOption: (stop) =>
+          stop.displayName(isEnglish: widget.isEnglish),
+      optionsBuilder: (value) => _filterStops(value.text),
+      onSelected: (stop) => onSelected(stop.stopId),
+      fieldViewBuilder: (context, controller, focusNode, onSubmit) {
+        return TextField(
+          controller: controller,
+          focusNode: focusNode,
+          textInputAction: TextInputAction.next,
+          decoration: InputDecoration(
+            labelText: label,
+            prefixIcon: const Icon(Icons.place_outlined),
+          ),
+        );
+      },
+      optionsViewBuilder: (context, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 240, maxWidth: 520),
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                shrinkWrap: true,
+                itemCount: options.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final stop = options.elementAt(index);
+                  return ListTile(
+                    title: Text(stop.displayName(isEnglish: widget.isEnglish)),
+                    subtitle: Text(stop.stopId),
+                    onTap: () => onSelected(stop),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFareCard(BuildContext context) {
+    if (!widget.hasSearched) return const SizedBox.shrink();
+    final fromId = widget.fromStopId;
+    final toId = widget.toStopId;
+    if (fromId == null || toId == null) return const SizedBox.shrink();
+
+    final fromLabel = _stopLabel(fromId);
+    final toLabel = _stopLabel(toId);
+    final estimatedFare = _estimatedFare;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$fromLabel → $toLabel',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (widget.isLoadingFare) ...[
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ] else if (widget.fareError != null) ...[
+              Text(
+                widget.fareError!,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+            ] else if (widget.fareQuote != null) ...[
+              Text(
+                'Government fare: ৳${widget.fareQuote!.fare.toStringAsFixed(0)}',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              if (widget.fareQuote!.routeNo != null &&
+                  widget.fareQuote!.routeNo!.trim().isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Route: ${widget.fareQuote!.routeNo}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ] else ...[
+              Text(
+                'Government fare not found. Enter distance to estimate:',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _distanceController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Distance (km)',
+                  hintText: 'e.g. 10.5',
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 10),
+              if (estimatedFare != null)
+                Text(
+                  'Estimated fare: ৳${estimatedFare.toStringAsFixed(0)}  (rate ৳${AppConfig.fallbackRatePerKm}/km)',
+                  style: Theme.of(context).textTheme.titleMedium,
+                )
+              else
+                Text(
+                  'Rate: ৳${AppConfig.fallbackRatePerKm} per km',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final stops = widget.stops;
+    final isLoadingStops = widget.isLoadingStops;
+    final stopsLoadError = widget.stopsLoadError;
+    final error = stopsLoadError;
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
@@ -146,7 +346,9 @@ class HomeTab extends StatelessWidget {
                             ),
                             IconButton(
                               tooltip: 'Reload stops',
-                              onPressed: isLoadingStops ? null : onReloadStops,
+                              onPressed: isLoadingStops
+                                  ? null
+                                  : widget.onReloadStops,
                               icon: AnimatedSwitcher(
                                 duration: const Duration(milliseconds: 200),
                                 child: isLoadingStops
@@ -210,10 +412,10 @@ class HomeTab extends StatelessWidget {
                                 ),
                           ),
                         ],
-                        if (stopsLoadError != null) ...[
+                        if (error != null) ...[
                           const SizedBox(height: 8),
                           Text(
-                            stopsLoadError!,
+                            error,
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: Theme.of(context).colorScheme.error,
@@ -222,44 +424,28 @@ class HomeTab extends StatelessWidget {
                           const SizedBox(height: 10),
                         ],
                         const SizedBox(height: 20),
-                        DropdownMenu<String>(
-                          expandedInsets: EdgeInsets.zero,
-                          label: const Text('From Stop'),
-                          enabled: !(isLoadingStops || stops.isEmpty),
-                          initialSelection: fromStopId,
-                          onSelected: onFromChanged,
-                          dropdownMenuEntries: stops
-                              .map(
-                                (stop) => DropdownMenuEntry<String>(
-                                  value: stop.stopId,
-                                  label: stop.displayName(isEnglish: isEnglish),
-                                ),
-                              )
-                              .toList(growable: false),
+                        _buildStopAutocomplete(
+                          label: 'From Stop',
+                          selectedId: widget.fromStopId,
+                          onSelected: widget.onFromChanged,
                         ),
                         const SizedBox(height: 12),
-                        DropdownMenu<String>(
-                          expandedInsets: EdgeInsets.zero,
-                          label: const Text('To Stop'),
-                          enabled: !(isLoadingStops || stops.isEmpty),
-                          initialSelection: toStopId,
-                          onSelected: onToChanged,
-                          dropdownMenuEntries: stops
-                              .map(
-                                (stop) => DropdownMenuEntry<String>(
-                                  value: stop.stopId,
-                                  label: stop.displayName(isEnglish: isEnglish),
-                                ),
-                              )
-                              .toList(growable: false),
+                        _buildStopAutocomplete(
+                          label: 'To Stop',
+                          selectedId: widget.toStopId,
+                          onSelected: widget.onToChanged,
                         ),
                         const SizedBox(height: 18),
                         FilledButton(
-                          onPressed: _canSearch ? onSearch : null,
+                          onPressed: _canSearch
+                              ? () => widget.onSearch()
+                              : null,
                           child: const Text('Search Route'),
                         ),
                         const SizedBox(height: 16),
                         _buildMiniMap(context),
+                        const SizedBox(height: 16),
+                        _buildFareCard(context),
                       ],
                     ),
                   ),
@@ -276,33 +462,9 @@ class HomeTab extends StatelessWidget {
                   spacing: 10,
                   runSpacing: 10,
                   children: [
-                    ActionChip(
-                      label: const Text('Mirpur → Farmgate'),
-                      onPressed: (isLoadingStops || stops.isEmpty)
-                          ? null
-                          : () => onApplyPopularRoute(
-                              fromEn: 'Mirpur',
-                              toEn: 'Farmgate',
-                            ),
-                    ),
-                    ActionChip(
-                      label: const Text('Gulistan → Jatrabari'),
-                      onPressed: (isLoadingStops || stops.isEmpty)
-                          ? null
-                          : () => onApplyPopularRoute(
-                              fromEn: 'Gulistan',
-                              toEn: 'Jatrabari',
-                            ),
-                    ),
-                    ActionChip(
-                      label: const Text('Uttara → Motijheel'),
-                      onPressed: (isLoadingStops || stops.isEmpty)
-                          ? null
-                          : () => onApplyPopularRoute(
-                              fromEn: 'Uttara',
-                              toEn: 'Motijheel',
-                            ),
-                    ),
+                    _popularButton('mirpur10', 'farmgate'),
+                    _popularButton('gulistan', 'jatrabari'),
+                    _popularButton('mirpur12', 'paltan'),
                   ],
                 ),
               ],
@@ -310,6 +472,17 @@ class HomeTab extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _popularButton(String fromId, String toId) {
+    final enabled = !(widget.isLoadingStops || widget.stops.isEmpty);
+    final label = '${_stopLabel(fromId)} → ${_stopLabel(toId)}';
+    return FilledButton.tonal(
+      onPressed: enabled
+          ? () => widget.onApplyPopularRoute(fromId: fromId, toId: toId)
+          : null,
+      child: Text(label),
     );
   }
 }

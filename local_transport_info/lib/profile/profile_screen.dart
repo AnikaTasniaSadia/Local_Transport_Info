@@ -72,8 +72,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = Theme.of(context).colorScheme.outlineVariant;
-    final onSurfaceVariant = Theme.of(context).colorScheme.onSurfaceVariant;
+    final primary = Theme.of(context).colorScheme.primary;
+    final secondary = Theme.of(context).colorScheme.secondary;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -84,69 +84,78 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Card(
-                  shape: RoundedRectangleBorder(
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [primary, secondary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     borderRadius: BorderRadius.circular(18),
-                    side: BorderSide(color: borderColor),
                   ),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 32,
+                        backgroundColor: Colors.white,
+                        backgroundImage: _profileImageBytes == null
+                            ? null
+                            : MemoryImage(_profileImageBytes!),
+                        child: _profileImageBytes == null
+                            ? Icon(
+                                Icons.person_outline,
+                                color: primary,
+                                size: 32,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Profile',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(color: Colors.white),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Basic information & profile photo',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.white70),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton.filledTonal(
+                        tooltip: 'Add profile image',
+                        onPressed: _pickProfileImage,
+                        icon: const Icon(Icons.camera_alt_outlined),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Card(
                   child: Padding(
                     padding: const EdgeInsets.all(18),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Profile',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Basic information & profile photo',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: onSurfaceVariant),
-                        ),
-                        const SizedBox(height: 18),
                         Row(
                           children: [
-                            Stack(
-                              alignment: Alignment.bottomRight,
-                              children: [
-                                CircleAvatar(
-                                  radius: 44,
-                                  backgroundImage: _profileImageBytes == null
-                                      ? null
-                                      : MemoryImage(_profileImageBytes!),
-                                  child: _profileImageBytes == null
-                                      ? const Icon(
-                                          Icons.person_outline,
-                                          size: 42,
-                                        )
-                                      : null,
-                                ),
-                                IconButton.filledTonal(
-                                  tooltip: 'Add profile image',
-                                  onPressed: _pickProfileImage,
-                                  icon: const Icon(Icons.camera_alt_outlined),
-                                ),
-                              ],
+                            FilledButton.tonal(
+                              onPressed: _pickProfileImage,
+                              child: const Text('Choose Image'),
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  FilledButton.tonal(
-                                    onPressed: _pickProfileImage,
-                                    child: const Text('Choose Image'),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextButton(
-                                    onPressed: _profileImageBytes == null
-                                        ? null
-                                        : _removeProfileImage,
-                                    child: const Text('Remove'),
-                                  ),
-                                ],
-                              ),
+                            const SizedBox(width: 8),
+                            TextButton(
+                              onPressed: _profileImageBytes == null
+                                  ? null
+                                  : _removeProfileImage,
+                              child: const Text('Remove'),
                             ),
                           ],
                         ),
