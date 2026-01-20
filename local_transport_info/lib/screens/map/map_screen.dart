@@ -279,6 +279,22 @@ class _MapScreenState extends State<MapScreen> {
     _mapController!.animateCamera(CameraUpdate.newLatLng(_currentLatLng!));
   }
 
+  double? _routeDistanceKm() {
+    if (_routePoints.length < 2) return null;
+    double meters = 0;
+    for (var i = 1; i < _routePoints.length; i++) {
+      final prev = _routePoints[i - 1];
+      final curr = _routePoints[i];
+      meters += Geolocator.distanceBetween(
+        prev.latitude,
+        prev.longitude,
+        curr.latitude,
+        curr.longitude,
+      );
+    }
+    return meters / 1000;
+  }
+
   @override
   Widget build(BuildContext context) {
     final from = StopCoordinates.ofStop(widget.fromStopId);
@@ -314,7 +330,15 @@ class _MapScreenState extends State<MapScreen> {
         Polyline(
           polylineId: const PolylineId('route'),
           points: _routePoints,
-          width: 6,
+          width: 8,
+          color: Theme.of(context).colorScheme.tertiary,
+        ),
+      );
+      polylines.add(
+        Polyline(
+          polylineId: const PolylineId('route-highlight'),
+          points: _routePoints,
+          width: 4,
           color: Theme.of(context).colorScheme.primary,
         ),
       );
@@ -334,6 +358,10 @@ class _MapScreenState extends State<MapScreen> {
 
     final initial = _currentLatLng ?? from ?? to ?? StopCoordinates.dhakaCenter;
 
+    final routeDistanceKm = _routeDistanceKm();
+    final fromLabel = _stopName(widget.fromStopId);
+    final toLabel = _stopName(widget.toStopId);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Map')),
       body: Stack(
@@ -347,6 +375,8 @@ class _MapScreenState extends State<MapScreen> {
             myLocationEnabled: true,
             myLocationButtonEnabled: true,
             mapToolbarEnabled: false,
+            rotateGesturesEnabled: false,
+            tiltGesturesEnabled: false,
           ),
           if (_loadingRoute)
             const Positioned(
@@ -358,23 +388,81 @@ class _MapScreenState extends State<MapScreen> {
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
-          if (_routeError != null)
-            Positioned(
-              left: 12,
-              right: 12,
-              bottom: 12,
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 16,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
               child: Card(
+                key: ValueKey('${fromLabel.isNotEmpty}-${toLabel.isNotEmpty}'),
                 child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    _routeError!,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Container(
+                        height: 44,
+                        width: 44,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Theme.of(context).colorScheme.primary,
+                              Theme.of(context).colorScheme.secondary,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.directions_bus_filled,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (fromLabel.isEmpty || toLabel.isEmpty)
+                                  ? 'Select From/To stops'
+                                  : '$fromLabel → $toLabel',
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _loadingRoute
+                                  ? 'Fetching fastest route…'
+                                  : _routeError != null
+                                  ? 'Route unavailable'
+                                  : routeDistanceKm == null
+                                  ? 'No route loaded'
+                                  : 'Approx. ${routeDistanceKm.toStringAsFixed(1)} km',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_routeError != null)
+                        Icon(
+                          Icons.error_outline,
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                    ],
                   ),
                 ),
               ),
             ),
+          ),
         ],
       ),
     );

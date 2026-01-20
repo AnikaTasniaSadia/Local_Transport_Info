@@ -45,27 +45,35 @@ class LocalTransportInfoApp extends StatelessWidget {
   final String? startupError;
   final String? startupWarning;
 
-  static const Color _primary = Color(0xFF1B5E20);
-  static const Color _accent = Color(0xFF00897B);
-  static const Color _background = Color(0xFFF9FAF9);
+  static const Color _primary = Color(0xFF00A86B);
+  static const Color _secondary = Color(0xFF1E3A8A);
+  static const Color _accentBlue = Color(0xFF38BDF8);
+  static const Color _accentAmber = Color(0xFFF59E0B);
+  static const Color _accentCoral = Color(0xFFFB7185);
+  static const Color _background = Color(0xFFF8FAFC);
   static const Color _card = Color(0xFFFFFFFF);
-  static const Color _textPrimary = Color(0xFF263238);
-  static const Color _textSecondary = Color(0xFF607D8B);
+  static const Color _textPrimary = Color(0xFF0F172A);
+  static const Color _textSecondary = Color(0xFF64748B);
 
   @override
   Widget build(BuildContext context) {
     final colorScheme =
-        ColorScheme.fromSeed(
-          seedColor: _primary,
+        ColorScheme(
           brightness: Brightness.light,
-        ).copyWith(
           primary: _primary,
-          secondary: _accent,
-          tertiary: _accent,
-          surface: _card,
           onPrimary: Colors.white,
+          secondary: _secondary,
           onSecondary: Colors.white,
+          tertiary: _accentBlue,
+          onTertiary: Colors.white,
+          error: const Color(0xFFEF4444),
+          onError: Colors.white,
+          surface: _card,
           onSurface: _textPrimary,
+        ).copyWith(
+          surfaceContainerHighest: _background,
+          outline: _textSecondary.withValues(alpha: 0.4),
+          outlineVariant: _textSecondary.withValues(alpha: 0.25),
         );
 
     return MaterialApp(
@@ -91,8 +99,8 @@ class LocalTransportInfoApp extends StatelessWidget {
           displayColor: _textPrimary,
         ),
         appBarTheme: const AppBarTheme(
-          backgroundColor: _primary,
-          foregroundColor: Colors.white,
+          backgroundColor: _card,
+          foregroundColor: _textPrimary,
           elevation: 0,
           centerTitle: false,
         ),
@@ -100,15 +108,30 @@ class LocalTransportInfoApp extends StatelessWidget {
           color: _card,
           elevation: 2,
           margin: EdgeInsets.zero,
-          shadowColor: _textSecondary.withValues(alpha: 0.2),
+          shadowColor: _textSecondary.withValues(alpha: 0.15),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: _card,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: _textSecondary.withValues(alpha: 0.25),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(
+              color: _textSecondary.withValues(alpha: 0.18),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: _primary, width: 1.4),
+          ),
           labelStyle: const TextStyle(color: _textSecondary),
           hintStyle: const TextStyle(color: _textSecondary),
         ),
@@ -117,7 +140,7 @@ class LocalTransportInfoApp extends StatelessWidget {
               FilledButton.styleFrom(
                 minimumSize: const Size.fromHeight(52),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ).copyWith(
                 overlayColor: WidgetStateProperty.resolveWith(
@@ -138,7 +161,8 @@ class LocalTransportInfoApp extends StatelessWidget {
         ),
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: _background,
-          indicatorColor: _primary.withValues(alpha: 0.12),
+          indicatorColor: _primary.withValues(alpha: 0.15),
+          indicatorShape: const StadiumBorder(),
           labelTextStyle: WidgetStateProperty.resolveWith(
             (states) => TextStyle(
               color: states.contains(WidgetState.selected)
@@ -161,7 +185,7 @@ class LocalTransportInfoApp extends StatelessWidget {
           secondarySelectedColor: _primary.withValues(alpha: 0.12),
           labelStyle: const TextStyle(color: _textPrimary),
           secondaryLabelStyle: const TextStyle(color: _textPrimary),
-          side: BorderSide(color: _textSecondary.withValues(alpha: 0.3)),
+          side: BorderSide(color: _textSecondary.withValues(alpha: 0.22)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
