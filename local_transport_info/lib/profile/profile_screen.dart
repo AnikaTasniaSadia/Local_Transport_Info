@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../screens/auth/user_auth_screen.dart';
 import '../services/supabase_service.dart';
@@ -106,11 +107,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {});
     } catch (e) {
       if (!mounted) return;
+      final message = e is AuthException
+          ? e.message
+          : '${_authRegister ? 'Sign up' : 'Login'} failed: $e';
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${_authRegister ? 'Sign up' : 'Login'} failed: $e'),
-          behavior: SnackBarBehavior.floating,
-        ),
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
       );
     } finally {
       if (mounted) setState(() => _authSubmitting = false);
@@ -128,13 +129,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Google sign-in failed: $e'),
+          content: Text(
+            e is AuthException ? e.message : 'Google sign-in failed: $e',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
     } finally {
       if (mounted) setState(() => _authSubmitting = false);
     }
+  }
+
+  String _displayName() {
+    final user = _service.currentUser;
+    final meta = user?.userMetadata;
+    final raw = meta is Map<String, dynamic>
+        ? (meta['full_name'] ?? meta['name'])
+        : null;
+    final fromMeta = raw?.toString().trim();
+    if (fromMeta != null && fromMeta.isNotEmpty) return fromMeta;
+    final email = user?.email?.trim();
+    if (email != null && email.isNotEmpty) {
+      final local = email.split('@').first.trim();
+      if (local.isNotEmpty) return local;
+    }
+    return 'Commuter';
   }
 
   String _initials() {
@@ -149,7 +168,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return '$first$last';
       }
     }
-    final email = _emailController.text.trim();
+    final email =
+        _service.currentUser?.email?.trim() ?? _emailController.text.trim();
     if (email.isNotEmpty) return email.characters.first.toUpperCase();
     return 'C';
   }
@@ -160,6 +180,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final secondary = Theme.of(context).colorScheme.secondary;
     final isSignedIn = _service.isSignedIn;
     final userEmail = _service.currentUser?.email;
+    final displayName = _displayName();
 
     return Material(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -210,7 +231,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Commuter Profile',
+                                    displayName,
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleLarge
@@ -440,67 +461,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(18),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Personal Details',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w700),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _nameController,
-                                textInputAction: TextInputAction.next,
-                                decoration: const InputDecoration(
-                                  labelText: 'Full name',
-                                  prefixIcon: Icon(Icons.badge_outlined),
+                      if (isSignedIn) ...[
+                        const SizedBox(height: 16),
+                        Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Personal Details',
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(fontWeight: FontWeight.w700),
                                 ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                textInputAction: TextInputAction.next,
-                                decoration: const InputDecoration(
-                                  labelText: 'Email',
-                                  prefixIcon: Icon(Icons.email_outlined),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _phoneController,
-                                keyboardType: TextInputType.phone,
-                                textInputAction: TextInputAction.next,
-                                decoration: const InputDecoration(
-                                  labelText: 'Phone',
-                                  prefixIcon: Icon(Icons.phone_outlined),
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _cityController,
-                                textInputAction: TextInputAction.done,
-                                decoration: const InputDecoration(
-                                  labelText: 'City',
-                                  prefixIcon: Icon(
-                                    Icons.location_city_outlined,
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _nameController,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Full name',
+                                    prefixIcon: Icon(Icons.badge_outlined),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 16),
-                              FilledButton(
-                                onPressed: _saveProfile,
-                                child: const Text('Save Profile'),
-                              ),
-                            ],
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Email',
+                                    prefixIcon: Icon(Icons.email_outlined),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Phone',
+                                    prefixIcon: Icon(Icons.phone_outlined),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller: _cityController,
+                                  textInputAction: TextInputAction.done,
+                                  decoration: const InputDecoration(
+                                    labelText: 'City',
+                                    prefixIcon: Icon(
+                                      Icons.location_city_outlined,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                FilledButton(
+                                  onPressed: _saveProfile,
+                                  child: const Text('Save Profile'),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
