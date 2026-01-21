@@ -374,7 +374,14 @@ class _RootScreenState extends State<RootScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isEnglish ? 'Local Transport' : 'লোকাল ট্রান্সপোর্ট'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const _LocalTILogo(size: 28),
+            const SizedBox(width: 10),
+            Text(_isEnglish ? 'LocalTI' : 'লোকালটিআই'),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: _checkingAdmin ? 'Checking admin' : 'Admin',
@@ -437,6 +444,54 @@ class _RootScreenState extends State<RootScreen> {
                   label: 'Profile',
                 ),
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LocalTILogo extends StatelessWidget {
+  const _LocalTILogo({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final secondary = Theme.of(context).colorScheme.secondary;
+    return Container(
+      height: size,
+      width: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [primary, secondary],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(size * 0.35),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.18),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * 0.35),
+        child: Image.asset(
+          'assets/logo/LocalTI-logo.jpeg',
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Center(
+            child: Text(
+              'LT',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
+              ),
             ),
           ),
         ),

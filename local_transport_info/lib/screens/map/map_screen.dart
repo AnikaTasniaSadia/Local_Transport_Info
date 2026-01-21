@@ -389,22 +389,43 @@ class _MapScreenState extends State<MapScreen> {
               ),
             ),
           Positioned(
-            left: 16,
-            right: 16,
-            bottom: 16,
+            left: 14,
+            right: 14,
+            bottom: 12,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 250),
               switchInCurve: Curves.easeOut,
               switchOutCurve: Curves.easeIn,
-              child: Card(
+              child: DecoratedBox(
                 key: ValueKey('${fromLabel.isNotEmpty}-${toLabel.isNotEmpty}'),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surface.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.outline.withValues(alpha: 0.15),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.12),
+                      blurRadius: 18,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
                 child: Padding(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   child: Row(
                     children: [
                       Container(
-                        height: 44,
-                        width: 44,
+                        height: 40,
+                        width: 40,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
@@ -419,6 +440,7 @@ class _MapScreenState extends State<MapScreen> {
                         child: const Icon(
                           Icons.directions_bus_filled,
                           color: Colors.white,
+                          size: 20,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -452,7 +474,28 @@ class _MapScreenState extends State<MapScreen> {
                           ],
                         ),
                       ),
-                      if (_routeError != null)
+                      if (routeDistanceKm != null && _routeError == null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            '${routeDistanceKm.toStringAsFixed(1)} km',
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.primary,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        )
+                      else if (_routeError != null)
                         Icon(
                           Icons.error_outline,
                           color: Theme.of(context).colorScheme.error,

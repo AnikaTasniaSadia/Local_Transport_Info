@@ -205,24 +205,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [primary, secondary],
+                            colors: [
+                              primary.withValues(alpha: 0.98),
+                              secondary.withValues(alpha: 0.92),
+                            ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(22),
+                          borderRadius: BorderRadius.circular(26),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.18),
+                              blurRadius: 22,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
-                            CircleAvatar(
-                              radius: 30,
-                              backgroundColor: Colors.white,
-                              child: Text(
-                                _initials(),
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: primary,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                            Container(
+                              height: 56,
+                              width: 56,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.95),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _initials(),
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
+                                        color: primary,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                ),
                               ),
                             ),
                             const SizedBox(width: 14),
@@ -235,7 +251,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     style: Theme.of(context)
                                         .textTheme
                                         .titleLarge
-                                        ?.copyWith(color: Colors.white),
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
@@ -260,96 +279,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                 ),
                                 child: const Text('Sign out'),
-                              )
-                            else
-                              FilledButton.tonal(
-                                onPressed: _openAuth,
-                                style: FilledButton.styleFrom(
-                                  minimumSize: const Size(0, 40),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                ),
-                                child: const Text('Login'),
                               ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              primary.withValues(alpha: 0.95),
-                              secondary.withValues(alpha: 0.85),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              blurRadius: 18,
-                              offset: const Offset(0, 10),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.lock_open,
-                                  color: Colors.white,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Commuter Login',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Fast access to routes & history sync',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(color: Colors.white70),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                ChoiceChip(
-                                  label: const Text('Login'),
-                                  selected: !_authRegister,
-                                  onSelected: (v) =>
-                                      setState(() => _authRegister = !v),
-                                ),
-                                const SizedBox(width: 6),
-                                ChoiceChip(
-                                  label: const Text('Register'),
-                                  selected: _authRegister,
-                                  onSelected: (v) =>
-                                      setState(() => _authRegister = v),
-                                ),
+                      if (!isSignedIn) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                primary.withValues(alpha: 0.95),
+                                secondary.withValues(alpha: 0.85),
                               ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                            const SizedBox(height: 16),
-                            if (!isSignedIn) ...[
+                            borderRadius: BorderRadius.circular(22),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 18,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.lock_open,
+                                    color: Colors.white,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Commuter Login',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Fast access to routes & history sync',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(color: Colors.white70),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ChoiceChip(
+                                    label: const Text('Login'),
+                                    selected: !_authRegister,
+                                    onSelected: (v) =>
+                                        setState(() => _authRegister = !v),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  ChoiceChip(
+                                    label: const Text('Register'),
+                                    selected: _authRegister,
+                                    onSelected: (v) =>
+                                        setState(() => _authRegister = v),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
                               TextField(
                                 controller: _authEmailController,
                                 keyboardType: TextInputType.emailAddress,
@@ -438,29 +446,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   foregroundColor: Colors.white,
                                 ),
                               ),
-                            ] else ...[
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.verified,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Text(
-                                      'You are signed in and your history is synced.',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(color: Colors.white70),
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ],
-                          ],
+                          ),
                         ),
-                      ),
+                      ],
                       if (isSignedIn) ...[
                         const SizedBox(height: 16),
                         Card(
